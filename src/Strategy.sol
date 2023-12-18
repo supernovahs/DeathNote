@@ -40,10 +40,10 @@ contract Strategy is BaseStrategy {
         aToken = IERC20(_atoken);
     }
 
-    function getbackup(address _owner) public returns (address,uint){
+    function getbackup(address _owner) public returns (address, uint256) {
         address _depositor = DeathNote[_owner].backup;
-        uint _time = DeathNote[_owner].alivetimestamp;
-        return (_depositor,_time);
+        uint256 _time = DeathNote[_owner].alivetimestamp;
+        return (_depositor, _time);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -62,19 +62,23 @@ contract Strategy is BaseStrategy {
      * to deposit in the yield source.
      */
     function _deployFunds(uint256 _amount) internal override {
-        if (DeathNote[CALLER].alivetimestamp != 0) { 
-            require(DeathNote[CALLER].alivetimestamp + 1 days > block.timestamp);
-            DeathNote[CALLER].alivetimestamp = block.timestamp;
-            ReceivertoOwner[RECEIVER] = CALLER;
-            IERC20(WETH).approve(POOL,_amount);
+        // Already deposited before
+        if (DeathNote[CALLER].alivetimestamp != 0) {
+            // Assert owner is not dead. If dead, they cannot deposit more.
+            // TODO: update 1 days to 1 year when deploying. using 1 days for testing purposes.
+            assert(DeathNote[CALLER].alivetimestamp + 1 days > block.timestamp);
+            DeathNote[CALLER].alivetimestamp = block.timestamp; // Death Note
+            IERC20(WETH).approve(POOL, _amount);
             IPool(POOL).supply(WETH, _amount, address(this), uint16(0));
+            // Depositing first time
         } else {
-            console.log("caller",CALLER);
-            console.log("receiver",RECEIVER);
+            console.log("caller", CALLER);
+            console.log("receiver", RECEIVER);
+            require(ReceivertoOwner[RECEIVER] == address(0)); // New Caller cannot re use already used receiver
             ReceivertoOwner[RECEIVER] = CALLER;
-            DeathNote[CALLER] = Note(RECEIVER, block.timestamp);
-            IERC20(WETH).approve(POOL,_amount);
-            IPool(POOL).supply(WETH, _amount, address(this), uint16(0));
+            DeathNote[CALLER] = Note(RECEIVER, block.timestamp); // Death Note
+            IERC20(WETH).approve(POOL, _amount); // aavev3
+            IPool(POOL).supply(WETH, _amount, address(this), uint16(0)); // aavev3
         }
     }
 
@@ -103,11 +107,11 @@ contract Strategy is BaseStrategy {
         address _owner = ReceivertoOwner[RECEIVER];
         if (DeathNote[_owner].alivetimestamp + 1 days < block.timestamp) {
             require(CALLER == RECEIVER);
-            IPool(POOL).withdraw(WETH,_amount,address(this));
+            IPool(POOL).withdraw(WETH, _amount, address(this));
         } else {
-            require(CALLER == _owner,"Only owner can transfer before death");
+            require(CALLER == _owner, "Only owner can transfer before death");
             DeathNote[_owner].alivetimestamp = block.timestamp;
-            IPool(POOL).withdraw(WETH,_amount,address(this));
+            IPool(POOL).withdraw(WETH, _amount, address(this));
         }
     }
 
@@ -134,10 +138,10 @@ contract Strategy is BaseStrategy {
      * amount of 'asset' the strategy currently holds including idle funds.
      */
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        //  if(!TokenizedStrategy.isShutdown()) {
-        //      IPool(POOL).withdraw(WETH,type(uint256).max,address(this));
-        //  }
-        //  _totalAssets = aToken.balanceOf(address(this)) + IERC20(WETH).balanceOf(address(this));
+        if (!TokenizedStrategy.isShutdown()) {
+            IPool(POOL).withdraw(WETH, type(uint256).max, address(this));
+        }
+        _totalAssets = aToken.balanceOf(address(this)) + IERC20(WETH).balanceOf(address(this));
     }
 
     /// Maps the backup address using this function
@@ -147,11 +151,10 @@ contract Strategy is BaseStrategy {
     }
 
     function availableWithdrawLimit(address _owner) public view override returns (uint256) {
-        console.log("owner",_owner);
-
+        console.log("owner", _owner);
         address receiver = DeathNote[_owner].backup;
-        console.log("receiver",receiver);
-        require(receiver == RECEIVER,";not equal");
+        console.log("receiver", receiver);
+        require(receiver == RECEIVER, ";not equal");
         return type(uint256).max;
     }
 

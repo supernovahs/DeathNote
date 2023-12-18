@@ -4,9 +4,9 @@ pragma solidity 0.8.18;
 import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 
 interface IStrategyInterface is IStrategy {
-//TODO: Add your specific implementation interface in here.
+    //TODO: Add your specific implementation interface in here.
 
-    function tstorereceiver(address receiver) external ;
+    function tstorereceiver(address receiver) external;
 
-    function getbackup(address _owner) external returns (address,uint);
+    function getbackup(address _owner) external returns (address, uint256);
 }
