@@ -15,6 +15,9 @@ This protocol is built on top of YearnV3 strategy to protect Eth hodlers , in ca
 ### Depositor's final responsiblities 
 ![Screenshot 2023-12-18 at 5 59 35 PM](https://github.com/supernovahs/DeathNote/assets/91280922/1d727961-bcb5-48c6-845d-cb311c6795a9)
 
+### Receiver's response after depositor's death
+
+![Screenshot 2023-12-18 at 8 19 41 PM](https://github.com/supernovahs/DeathNote/assets/91280922/9be812e1-63ea-4398-a1ee-96d5cfa3185e)
 
 
 ## Testing
