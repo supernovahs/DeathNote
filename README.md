@@ -10,6 +10,13 @@ This protocol is built on top of YearnV3 strategy to protect Eth hodlers , in ca
 - If depositor does not do any activity for 1 year with our protocol, we assume they are dead , or critically disabled.
 - Their funds can now be claimed by their lawyer or family through a receiver address , which the depositor stated when doing the original deposit.
 
+## Architecture
+
+### Depositor's final responsiblities 
+![Screenshot 2023-12-18 at 5 59 35 PM](https://github.com/supernovahs/DeathNote/assets/91280922/1d727961-bcb5-48c6-845d-cb311c6795a9)
+
+
+
 ## Testing
 You can find the unit tests in [here](https://github.com/supernovahs/DeathNote/blob/master/src/test/Operation.t.sol).
 To run tests, 
