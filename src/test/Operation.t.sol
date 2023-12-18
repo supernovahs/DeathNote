@@ -8,7 +8,8 @@ import {Setup, ERC20, IStrategyInterface} from "./utils/Setup.sol";
 contract OperationTest is Setup {
     uint forkId;
     function setUp() public virtual override {
-        forkId = vm.createSelectFork("",18756148);
+        string memory eth_rpc_url = vm.envString("ETH_RPC_URL");
+        forkId = vm.createSelectFork(eth_rpc_url,18756148);
         super.setUp();
     }
 
@@ -29,10 +30,8 @@ contract OperationTest is Setup {
 
 
     function test_deposit() public {
-        console.log("receiver address in deposit", receiver);
         strategy.tstorereceiver(receiver);
         mintAndDepositIntoStrategy((strategy),depositor, receiver, 1e18);
-        console.log("block number in deposit",block.number);
     }
 
 
