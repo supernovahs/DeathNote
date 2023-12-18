@@ -8,7 +8,7 @@ import {Setup, ERC20, IStrategyInterface} from "./utils/Setup.sol";
 contract OperationTest is Setup {
     uint forkId;
     function setUp() public virtual override {
-        forkId = vm.createSelectFork("https://eth-mainnet.g.alchemy.com/v2/gDhsVUBEe61W2Q0w40A7Jwr3ZVyJ_Mvo",18756148);
+        forkId = vm.createSelectFork("",18756148);
         super.setUp();
     }
 
