@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.18;
 
-import {BaseStrategy, ERC20} from "@tokenized-strategy/BaseStrategy.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-// Import interfaces for many popular DeFi projects, or add your own!
-//import "../interfaces/<protocol>/<Interface>.sol";
-
+import {BaseStrategy, console, ERC20} from "./BaseStrategy.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IPool} from "@aave-core/interfaces/IPool.sol";
 /**
  * The `TokenizedStrategy` variable can be used to retrieve the strategies
  * specific storage data your contract.
@@ -23,10 +20,31 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract Strategy is BaseStrategy {
     using SafeERC20 for ERC20;
 
-    constructor(
-        address _asset,
-        string memory _name
-    ) BaseStrategy(_asset, _name) {}
+    address public immutable POOL;
+    address public immutable WETH;
+    IERC20 public aToken;
+
+    struct Note {
+        address backup;
+        uint256 alivetimestamp;
+    }
+
+    mapping(address => Note) public DeathNote;
+    mapping(address => address) public ReceivertoOwner;
+
+    constructor(address _asset, string memory _name, address _weth, address _pool, address _atoken)
+        BaseStrategy(_asset, _name)
+    {
+        WETH = _weth;
+        POOL = _pool;
+        aToken = IERC20(_atoken);
+    }
+
+    function getbackup(address _owner) public returns (address,uint){
+        address _depositor = DeathNote[_owner].backup;
+        uint _time = DeathNote[_owner].alivetimestamp;
+        return (_depositor,_time);
+    }
 
     /*//////////////////////////////////////////////////////////////
                 NEEDED TO BE OVERRIDDEN BY STRATEGIST
@@ -44,9 +62,20 @@ contract Strategy is BaseStrategy {
      * to deposit in the yield source.
      */
     function _deployFunds(uint256 _amount) internal override {
-        // TODO: implement deposit logic EX:
-        //
-        //      lendingPool.deposit(address(asset), _amount ,0);
+        if (DeathNote[CALLER].alivetimestamp != 0) { 
+            require(DeathNote[CALLER].alivetimestamp + 1 days > block.timestamp);
+            DeathNote[CALLER].alivetimestamp = block.timestamp;
+            ReceivertoOwner[RECEIVER] = CALLER;
+            IERC20(WETH).approve(POOL,_amount);
+            IPool(POOL).supply(WETH, _amount, address(this), uint16(0));
+        } else {
+            console.log("caller",CALLER);
+            console.log("receiver",RECEIVER);
+            ReceivertoOwner[RECEIVER] = CALLER;
+            DeathNote[CALLER] = Note(RECEIVER, block.timestamp);
+            IERC20(WETH).approve(POOL,_amount);
+            IPool(POOL).supply(WETH, _amount, address(this), uint16(0));
+        }
     }
 
     /**
@@ -71,9 +100,15 @@ contract Strategy is BaseStrategy {
      * @param _amount, The amount of 'asset' to be freed.
      */
     function _freeFunds(uint256 _amount) internal override {
-        // TODO: implement withdraw logic EX:
-        //
-        //      lendingPool.withdraw(address(asset), _amount);
+        address _owner = ReceivertoOwner[RECEIVER];
+        if (DeathNote[_owner].alivetimestamp + 1 days < block.timestamp) {
+            require(CALLER == RECEIVER);
+            IPool(POOL).withdraw(WETH,_amount,address(this));
+        } else {
+            require(CALLER == _owner,"Only owner can transfer before death");
+            DeathNote[_owner].alivetimestamp = block.timestamp;
+            IPool(POOL).withdraw(WETH,_amount,address(this));
+        }
     }
 
     /**
@@ -98,19 +133,26 @@ contract Strategy is BaseStrategy {
      * @return _totalAssets A trusted and accurate account for the total
      * amount of 'asset' the strategy currently holds including idle funds.
      */
-    function _harvestAndReport()
-        internal
-        override
-        returns (uint256 _totalAssets)
-    {
-        // TODO: Implement harvesting logic and accurate accounting EX:
-        //
-        //      if(!TokenizedStrategy.isShutdown()) {
-        //          _claimAndSellRewards();
-        //      }
-        //      _totalAssets = aToken.balanceOf(address(this)) + asset.balanceOf(address(this));
-        //
-        _totalAssets = asset.balanceOf(address(this));
+    function _harvestAndReport() internal override returns (uint256 _totalAssets) {
+        //  if(!TokenizedStrategy.isShutdown()) {
+        //      IPool(POOL).withdraw(WETH,type(uint256).max,address(this));
+        //  }
+        //  _totalAssets = aToken.balanceOf(address(this)) + IERC20(WETH).balanceOf(address(this));
+    }
+
+    /// Maps the backup address using this function
+    function availableDepositLimit(address _receiver) public view override returns (uint256) {
+        require(_receiver == RECEIVER);
+        return type(uint256).max;
+    }
+
+    function availableWithdrawLimit(address _owner) public view override returns (uint256) {
+        console.log("owner",_owner);
+
+        address receiver = DeathNote[_owner].backup;
+        console.log("receiver",receiver);
+        require(receiver == RECEIVER,";not equal");
+        return type(uint256).max;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -140,8 +182,8 @@ contract Strategy is BaseStrategy {
      *
      * @param _totalIdle The current amount of idle funds that are available to deploy.
      *
-    function _tend(uint256 _totalIdle) internal override {}
-    */
+     * function _tend(uint256 _totalIdle) internal override {}
+     */
 
     /**
      * @dev Optional trigger to override if tend() will be used by the strategy.
@@ -149,8 +191,8 @@ contract Strategy is BaseStrategy {
      *
      * @return . Should return true if tend() should be called by keeper or false if not.
      *
-    function _tendTrigger() internal view override returns (bool) {}
-    */
+     * function _tendTrigger() internal view override returns (bool) {}
+     */
 
     /**
      * @notice Gets the max amount of `asset` that an address can deposit.
@@ -173,16 +215,16 @@ contract Strategy is BaseStrategy {
      * @param . The address that is depositing into the strategy.
      * @return . The available amount the `_owner` can deposit in terms of `asset`
      *
-    function availableDepositLimit(
-        address _owner
-    ) public view override returns (uint256) {
-        TODO: If desired Implement deposit limit logic and any needed state variables .
-        
-        EX:    
-            uint256 totalAssets = TokenizedStrategy.totalAssets();
-            return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
-    }
-    */
+     * function availableDepositLimit(
+     *     address _owner
+     * ) public view override returns (uint256) {
+     *     TODO: If desired Implement deposit limit logic and any needed state variables .
+     *
+     *     EX:
+     *         uint256 totalAssets = TokenizedStrategy.totalAssets();
+     *         return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
+     * }
+     */
 
     /**
      * @notice Gets the max amount of `asset` that can be withdrawn.
@@ -202,15 +244,15 @@ contract Strategy is BaseStrategy {
      * @param . The address that is withdrawing from the strategy.
      * @return . The available amount that can be withdrawn in terms of `asset`
      *
-    function availableWithdrawLimit(
-        address _owner
-    ) public view override returns (uint256) {
-        TODO: If desired Implement withdraw limit logic and any needed state variables.
-        
-        EX:    
-            return TokenizedStrategy.totalIdle();
-    }
-    */
+     * function availableWithdrawLimit(
+     *     address _owner
+     * ) public view override returns (uint256) {
+     *     TODO: If desired Implement withdraw limit logic and any needed state variables.
+     *
+     *     EX:
+     *         return TokenizedStrategy.totalIdle();
+     * }
+     */
 
     /**
      * @dev Optional function for a strategist to override that will
@@ -233,13 +275,12 @@ contract Strategy is BaseStrategy {
      *
      * @param _amount The amount of asset to attempt to free.
      *
-    function _emergencyWithdraw(uint256 _amount) internal override {
-        TODO: If desired implement simple logic to free deployed funds.
-
-        EX:
-            _amount = min(_amount, aToken.balanceOf(address(this)));
-            _freeFunds(_amount);
-    }
-
-    */
+     * function _emergencyWithdraw(uint256 _amount) internal override {
+     *     TODO: If desired implement simple logic to free deployed funds.
+     *
+     *     EX:
+     *         _amount = min(_amount, aToken.balanceOf(address(this)));
+     *         _freeFunds(_amount);
+     * }
+     */
 }

@@ -3,10 +3,10 @@ pragma solidity 0.8.18;
 
 import "forge-std/console.sol";
 import {ExtendedTest} from "./ExtendedTest.sol";
-
+import {console2} from "forge-std/console2.sol";
 import {Strategy, ERC20} from "../../Strategy.sol";
 import {IStrategyInterface} from "../../interfaces/IStrategyInterface.sol";
-
+import "@tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 // Inherit the events so they can be checked if desired.
 import {IEvents} from "@tokenized-strategy/interfaces/IEvents.sol";
 
@@ -49,19 +49,18 @@ contract Setup is ExtendedTest, IEvents {
         _setTokenAddrs();
 
         // Set asset
-        asset = ERC20(tokenAddrs["DAI"]);
-
-        // Set decimals
-        decimals = asset.decimals();
-
+        asset = ERC20(tokenAddrs["WETH"]);
+        decimals = 18;
+        console.log("WEth",address(asset));
         // Deploy strategy and set variables
         strategy = IStrategyInterface(setUpStrategy());
+        console2.log("setting up strategee");
 
-        factory = strategy.FACTORY();
+        //    factory = strategy.FACTORY();
 
         // label all the used addresses for traces
         vm.label(keeper, "keeper");
-        vm.label(factory, "factory");
+        // vm.label(factory, "factory");
         vm.label(address(asset), "asset");
         vm.label(management, "management");
         vm.label(address(strategy), "strategy");
@@ -69,11 +68,13 @@ contract Setup is ExtendedTest, IEvents {
     }
 
     function setUpStrategy() public returns (address) {
+        console2.log("setting up strategy");
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IStrategyInterface _strategy = IStrategyInterface(
-            address(new Strategy(address(asset), "Tokenized Strategy"))
+            address(
+                new Strategy(address(asset), "Death Note",0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2,0x4d5F47FA6A74757f35C14fD3a6Ef8E3C9BC514E8)
+            )
         );
-
         // set keeper
         _strategy.setKeeper(keeper);
         // set treasury
@@ -87,25 +88,33 @@ contract Setup is ExtendedTest, IEvents {
         return address(_strategy);
     }
 
-    function depositIntoStrategy(
-        IStrategyInterface _strategy,
-        address _user,
-        uint256 _amount
-    ) public {
-        vm.prank(_user);
+    function depositIntoStrategy(IStrategyInterface _strategy,address depositor, address receiver, uint256 _amount) public {
+        vm.label(address(_strategy), "strategy");
+        vm.label(receiver, "receiver");
+        vm.label(depositor,"depositor");
+        vm.prank(depositor);
         asset.approve(address(_strategy), _amount);
-
-        vm.prank(_user);
-        _strategy.deposit(_amount, _user);
+        console2.log("approved");
+        console.log("block number just right before",block.number);
+        vm.prank(depositor);
+        _strategy.deposit(_amount, receiver);
+        console2.log("deposited");
     }
 
-    function mintAndDepositIntoStrategy(
-        IStrategyInterface _strategy,
-        address _user,
-        uint256 _amount
-    ) public {
-        airdrop(asset, _user, _amount);
-        depositIntoStrategy(_strategy, _user, _amount);
+    function withdrawfromStrategybyowner(IStrategyInterface _strategy, address depositor, uint _amount,address _receiver) public {
+        vm.prank(depositor);
+        _strategy.withdraw(_amount, _receiver,depositor);
+    }
+
+    function withdrawfromStrategybyreceiver(IStrategyInterface _strategy, address depositor, uint _amount,address _receiver) public {
+        vm.prank(_receiver);
+        _strategy.withdraw(_amount, _receiver,depositor);
+    }
+
+
+    function mintAndDepositIntoStrategy(IStrategyInterface _strategy,address depositor, address receiver, uint256 _amount) public {
+        airdrop(asset, depositor, _amount);
+        depositIntoStrategy(_strategy,depositor, receiver, _amount);
     }
 
     // For checking the amounts in the strategy
