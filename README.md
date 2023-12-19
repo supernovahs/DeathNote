@@ -14,7 +14,7 @@ This protocol is built on top of YearnV3 strategy to protect Eth hodlers , in ca
 ## Design considerations
 
 Some thoughts of mine:-
-- I had this idea when I saw a tweet from [Jai](https://twitter.com/Jai_Bhavnani) bhavnani from [Waymont](https://twitter.com/WaymontCo) on their deathh inheritance service. Where they assume owner is dead if no interaction with private key is done for 1 year.
+- I had this idea when I saw a tweet from [Jai](https://twitter.com/Jai_Bhavnani) bhavnani from [Waymont](https://twitter.com/WaymontCo) in their death inheritance service. Where they assume owner is dead if no interaction with private key is done for 1 year.
 - Several design modifications were made by me to support Yearn V3. The design could be much different if we don't use Yearnv3. But in this case, it was a requirement to fit the strategy in the constraints of the EIP.
 - We are storing msg.sender in the fallback function to use in our Death Note internally. This means no static call is supported.
 - This means more cost , but after transient storage is implemented, this cost will significantly reduce.
