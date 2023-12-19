@@ -118,11 +118,8 @@ contract Setup is ExtendedTest, IEvents {
         vm.label(depositor, "depositor");
         vm.prank(depositor);
         asset.approve(address(_strategy), _amount);
-        console2.log("approved");
-        console.log("block number just right before", block.number);
         vm.prank(depositor);
         _strategy.deposit(_amount, receiver);
-        console2.log("deposited");
     }
 
     function withdrawfromStrategybyowner(
