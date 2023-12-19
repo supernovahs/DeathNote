@@ -9,7 +9,7 @@ This protocol is built on top of YearnV3 strategy to protect Eth hodlers , in ca
 - Depositors can invest their Eth using our strategy , which internally deploys the funds to aave v3.
 - If depositor does not do any activity for 1 year with our protocol, we assume they are dead , or critically disabled.
 - Their funds can now be claimed by their lawyer or family through a receiver address , which the depositor stated when doing the original deposit.
-
+- Currently we are using ethereum mainnet forking for testing and POC. 
 
 ## Design considerations
 
@@ -24,6 +24,9 @@ Some thoughts of mine:-
 - We are depositing WETH into aave v3 and withdrawing them . Currently, the strategy to generate yield is fairly simple. There is definitely scope for improvement. But for the time being, my main focus was logic for main strategy .
 
 ## Testing
+
+Set the ETH_RPC_URL and etherscan api keu in the .env file , take a look at example.env
+
 You can find the unit tests in [here](https://github.com/supernovahs/DeathNote/blob/master/src/test/Operation.t.sol).
 To run tests, 
 ```
