@@ -39,6 +39,9 @@ To run tests,
 make test 
 ```
 
+## Safety
+This is experimental software and is provided on an "as is" and "as available" basis. We do not give any warranties and will not be liable for any loss incurred through any use of this codebase. This code is strictly for educational purposes only. Not for production use.
+
 ## Made with ❤️ by 
 - [supernovahs.eth](https://www.supernovahs.xyz/)
 
