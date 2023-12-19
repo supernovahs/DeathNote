@@ -22,15 +22,6 @@ Some thoughts of mine:-
 - Since only `_deployFunds` and `_freeFunds` can change state, all the required work had to be done in them. So other view function for checking limits are doing sanity checks with our storage.
 - Before calling `deposit` or `withdraw` ,the caller has to call a public functionc called `tstorereceiver` to temporarily store receiver address in storage. We understand this can be changed by anyone before the caller calls `deposit` or `withdraw`. Adequate protection is asserted by checking the value in storage with the paramter theh user gives in deposit or withdraw function using [deposit](https://github.com/supernovahs/DeathNote/blob/2a7326f7a16674025dcf2f643cb3577223b3daaa/src/Strategy.sol#L135) and [withdraw](https://github.com/supernovahs/DeathNote/blob/2a7326f7a16674025dcf2f643cb3577223b3daaa/src/Strategy.sol#L141) . Hence protecting them. We can also implement a lock for some blocks to also improve this aspect.
 - We are depositing WETH into aave v3 and withdrawing them . Currently, the strategy to generate yield is fairly simple. There is definitely scope for improvement. But for the time being, my main focus was logic for main strategy .
-## Architecture
-
-### Depositor's final responsiblities 
-![Screenshot 2023-12-18 at 5 59 35 PM](https://github.com/supernovahs/DeathNote/assets/91280922/1d727961-bcb5-48c6-845d-cb311c6795a9)
-
-### Receiver's response after depositor's death
-
-![Screenshot 2023-12-18 at 8 19 41 PM](https://github.com/supernovahs/DeathNote/assets/91280922/9be812e1-63ea-4398-a1ee-96d5cfa3185e)
-
 
 ## Testing
 You can find the unit tests in [here](https://github.com/supernovahs/DeathNote/blob/master/src/test/Operation.t.sol).
@@ -41,6 +32,16 @@ make test
 
 ## Future Vision
 I believe thia strategy can be deployed on every chain wherever aave v3 supports. After feedback from yearn devs, and more testing , I intend to deploy this strategy on Polygon POS and subsequently on rest of the chains. Have to figure out stuff like performance fee, etc . This is a fairly simple strategy, and I expect users to use this strategy in the future frequently, especially efter transient storage hard fork.
+
+## Architecture
+
+### Depositor's final responsiblities 
+![Screenshot 2023-12-18 at 5 59 35 PM](https://github.com/supernovahs/DeathNote/assets/91280922/1d727961-bcb5-48c6-845d-cb311c6795a9)
+
+### Receiver's response after depositor's death
+
+![Screenshot 2023-12-18 at 8 19 41 PM](https://github.com/supernovahs/DeathNote/assets/91280922/9be812e1-63ea-4398-a1ee-96d5cfa3185e)
+
 
 ## Safety
 This is experimental software and is provided on an "as is" and "as available" basis. We do not give any warranties and will not be liable for any loss incurred through any use of this codebase. This code is strictly for educational purposes only. Not for production use.
