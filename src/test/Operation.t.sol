@@ -47,7 +47,7 @@ contract OperationTest is Setup {
         test_depositor_initial_steps();
         vm.rollFork(forkId, 18799549);
         assertEq(block.number, 18799549);
-    
+
         (address _receiver, uint256 _time) = strategy.getbackup(depositor);
 
         withdrawfromStrategybyreceiver(strategy, depositor, 0.9e18, receiver);
