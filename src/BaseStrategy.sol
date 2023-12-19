@@ -463,6 +463,8 @@ abstract contract BaseStrategy {
     }
 
     // execute a function on the TokenizedStrategy and return any value.
+    // Store msg.sender in storage for use later.
+    // This will cost significantly less after Transient storage is implemented in the upcoming hard fork.
     fallback() external {
         CALLER = msg.sender;
         // load our target address

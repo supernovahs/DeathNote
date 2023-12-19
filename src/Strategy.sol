@@ -4,19 +4,15 @@ pragma solidity 0.8.18;
 import {BaseStrategy, console, ERC20} from "./BaseStrategy.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IPool} from "@aave-core/interfaces/IPool.sol";
-/**
- * The `TokenizedStrategy` variable can be used to retrieve the strategies
- * specific storage data your contract.
- *
- *       i.e. uint256 totalAssets = TokenizedStrategy.totalAssets()
- *
- * This can not be used for write functions. Any TokenizedStrategy
- * variables that need to be updated post deployment will need to
- * come from an external call from the strategies specific `management`.
- */
 
-// NOTE: To implement permissioned functions you can use the onlyManagement, onlyEmergencyAuthorized and onlyKeepers modifiers
+//    DDDD   EEEEE   AAA   TTTTT  H    H  N   N   OOO   TTTTT  EEEEE
+//    D   D  E      A   A    T    H    H  NN  N  O   O    T    E
+//    D   D  EEEE   AAAAA    T    HHHHHH  N N N  O   O    T    EEEE
+//    D   D  E      A   A    T    H    H  N  NN  O   O    T    E
+//    DDDD   EEEEE  A   A    T    H    H  N   N   OOO     T    EEEEE
 
+/// @author supernovahs.eth <https://github.com/supernovahs>
+/// @notice A Yearnv3 strategy to protect funds against Death or critical disabilities
 contract Strategy is BaseStrategy {
     using SafeERC20 for ERC20;
 
@@ -32,23 +28,11 @@ contract Strategy is BaseStrategy {
     mapping(address => Note) public DeathNote;
     mapping(address => address) public ReceivertoOwner;
 
-    constructor(address _asset, string memory _name, address _weth, address _pool, address _atoken)
-        BaseStrategy(_asset, _name)
-    {
-        WETH = _weth;
-        POOL = _pool;
-        aToken = IERC20(_atoken);
-    }
-
-    function getbackup(address _owner) public returns (address, uint256) {
+    function getbackup(address _owner) public view returns (address, uint256) {
         address _depositor = DeathNote[_owner].backup;
         uint256 _time = DeathNote[_owner].alivetimestamp;
         return (_depositor, _time);
     }
-
-    /*//////////////////////////////////////////////////////////////
-                NEEDED TO BE OVERRIDDEN BY STRATEGIST
-    //////////////////////////////////////////////////////////////*/
 
     /**
      * @dev Should deploy up to '_amount' of 'asset' in the yield source.
@@ -65,15 +49,13 @@ contract Strategy is BaseStrategy {
         // Already deposited before
         if (DeathNote[CALLER].alivetimestamp != 0) {
             // Assert owner is not dead. If dead, they cannot deposit more.
-            // TODO: update 1 days to 1 year when deploying. using 1 days for testing purposes.
+            // IMPORTANT: update 1 days to 365 days when deploying. using 1 days for testing purposes.
             assert(DeathNote[CALLER].alivetimestamp + 1 days > block.timestamp);
             DeathNote[CALLER].alivetimestamp = block.timestamp; // Death Note
             IERC20(WETH).approve(POOL, _amount);
             IPool(POOL).supply(WETH, _amount, address(this), uint16(0));
             // Depositing first time
         } else {
-            console.log("caller", CALLER);
-            console.log("receiver", RECEIVER);
             require(ReceivertoOwner[RECEIVER] == address(0)); // New Caller cannot re use already used receiver
             ReceivertoOwner[RECEIVER] = CALLER;
             DeathNote[CALLER] = Note(RECEIVER, block.timestamp); // Death Note
@@ -105,12 +87,14 @@ contract Strategy is BaseStrategy {
      */
     function _freeFunds(uint256 _amount) internal override {
         address _owner = ReceivertoOwner[RECEIVER];
+        // IMPORTANT: Update 1 days to 365 days ,when deploying in production.
         if (DeathNote[_owner].alivetimestamp + 1 days < block.timestamp) {
-            require(CALLER == RECEIVER);
+            // Owner is dead
+            require(CALLER == RECEIVER); // Receiver can withdraw
             IPool(POOL).withdraw(WETH, _amount, address(this));
         } else {
-            require(CALLER == _owner, "Only owner can transfer before death");
-            DeathNote[_owner].alivetimestamp = block.timestamp;
+            require(CALLER == _owner, "Only owner can transfer before death"); // Owner is alive
+            DeathNote[_owner].alivetimestamp = block.timestamp; // Update liveness timestamp
             IPool(POOL).withdraw(WETH, _amount, address(this));
         }
     }
@@ -145,145 +129,29 @@ contract Strategy is BaseStrategy {
     }
 
     /// Maps the backup address using this function
+    /// Asserts _recevier is indeed equal to our storage
+    /// @param _receiver the receiver's address to which shares will be minted.
     function availableDepositLimit(address _receiver) public view override returns (uint256) {
-        require(_receiver == RECEIVER);
+        require(_receiver == RECEIVER, "sanity check failed");
         return type(uint256).max;
     }
 
+    /// Asserts the receiver address in our Death Note is equal to the stored address in our temporary storage.
+    /// @param _owner owner whose shares are being withdrawn
     function availableWithdrawLimit(address _owner) public view override returns (uint256) {
-        console.log("owner", _owner);
         address receiver = DeathNote[_owner].backup;
-        console.log("receiver", receiver);
-        require(receiver == RECEIVER, ";not equal");
+        require(receiver == RECEIVER, ";sanity check failed");
         return type(uint256).max;
     }
 
     /*//////////////////////////////////////////////////////////////
-                    OPTIONAL TO OVERRIDE BY STRATEGIST
+                            CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @dev Optional function for strategist to override that can
-     *  be called in between reports.
-     *
-     * If '_tend' is used tendTrigger() will also need to be overridden.
-     *
-     * This call can only be called by a permissioned role so may be
-     * through protected relays.
-     *
-     * This can be used to harvest and compound rewards, deposit idle funds,
-     * perform needed position maintenance or anything else that doesn't need
-     * a full report for.
-     *
-     *   EX: A strategy that can not deposit funds without getting
-     *       sandwiched can use the tend when a certain threshold
-     *       of idle to totalAssets has been reached.
-     *
-     * The TokenizedStrategy contract will do all needed debt and idle updates
-     * after this has finished and will have no effect on PPS of the strategy
-     * till report() is called.
-     *
-     * @param _totalIdle The current amount of idle funds that are available to deploy.
-     *
-     * function _tend(uint256 _totalIdle) internal override {}
-     */
-
-    /**
-     * @dev Optional trigger to override if tend() will be used by the strategy.
-     * This must be implemented if the strategy hopes to invoke _tend().
-     *
-     * @return . Should return true if tend() should be called by keeper or false if not.
-     *
-     * function _tendTrigger() internal view override returns (bool) {}
-     */
-
-    /**
-     * @notice Gets the max amount of `asset` that an address can deposit.
-     * @dev Defaults to an unlimited amount for any address. But can
-     * be overridden by strategists.
-     *
-     * This function will be called before any deposit or mints to enforce
-     * any limits desired by the strategist. This can be used for either a
-     * traditional deposit limit or for implementing a whitelist etc.
-     *
-     *   EX:
-     *      if(isAllowed[_owner]) return super.availableDepositLimit(_owner);
-     *
-     * This does not need to take into account any conversion rates
-     * from shares to assets. But should know that any non max uint256
-     * amounts may be converted to shares. So it is recommended to keep
-     * custom amounts low enough as not to cause overflow when multiplied
-     * by `totalSupply`.
-     *
-     * @param . The address that is depositing into the strategy.
-     * @return . The available amount the `_owner` can deposit in terms of `asset`
-     *
-     * function availableDepositLimit(
-     *     address _owner
-     * ) public view override returns (uint256) {
-     *     TODO: If desired Implement deposit limit logic and any needed state variables .
-     *
-     *     EX:
-     *         uint256 totalAssets = TokenizedStrategy.totalAssets();
-     *         return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
-     * }
-     */
-
-    /**
-     * @notice Gets the max amount of `asset` that can be withdrawn.
-     * @dev Defaults to an unlimited amount for any address. But can
-     * be overridden by strategists.
-     *
-     * This function will be called before any withdraw or redeem to enforce
-     * any limits desired by the strategist. This can be used for illiquid
-     * or sandwichable strategies. It should never be lower than `totalIdle`.
-     *
-     *   EX:
-     *       return TokenIzedStrategy.totalIdle();
-     *
-     * This does not need to take into account the `_owner`'s share balance
-     * or conversion rates from shares to assets.
-     *
-     * @param . The address that is withdrawing from the strategy.
-     * @return . The available amount that can be withdrawn in terms of `asset`
-     *
-     * function availableWithdrawLimit(
-     *     address _owner
-     * ) public view override returns (uint256) {
-     *     TODO: If desired Implement withdraw limit logic and any needed state variables.
-     *
-     *     EX:
-     *         return TokenizedStrategy.totalIdle();
-     * }
-     */
-
-    /**
-     * @dev Optional function for a strategist to override that will
-     * allow management to manually withdraw deployed funds from the
-     * yield source if a strategy is shutdown.
-     *
-     * This should attempt to free `_amount`, noting that `_amount` may
-     * be more than is currently deployed.
-     *
-     * NOTE: This will not realize any profits or losses. A separate
-     * {report} will be needed in order to record any profit/loss. If
-     * a report may need to be called after a shutdown it is important
-     * to check if the strategy is shutdown during {_harvestAndReport}
-     * so that it does not simply re-deploy all funds that had been freed.
-     *
-     * EX:
-     *   if(freeAsset > 0 && !TokenizedStrategy.isShutdown()) {
-     *       depositFunds...
-     *    }
-     *
-     * @param _amount The amount of asset to attempt to free.
-     *
-     * function _emergencyWithdraw(uint256 _amount) internal override {
-     *     TODO: If desired implement simple logic to free deployed funds.
-     *
-     *     EX:
-     *         _amount = min(_amount, aToken.balanceOf(address(this)));
-     *         _freeFunds(_amount);
-     * }
-     */
+    constructor(address _asset, string memory _name, address _weth, address _pool, address _atoken)
+        BaseStrategy(_asset, _name)
+    {
+        WETH = _weth;
+        POOL = _pool;
+        aToken = IERC20(_atoken);
+    }
 }

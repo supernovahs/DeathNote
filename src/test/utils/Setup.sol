@@ -65,6 +65,8 @@ contract Setup is ExtendedTest, IEvents {
         vm.label(performanceFeeRecipient, "performanceFeeRecipient");
     }
 
+    /// Setting up strategy for aave v3 WETH
+    /// Parameters in strategy are taken from aave v3 docs for mainnet .
     function setUpStrategy() public returns (address) {
         console2.log("setting up strategy");
         // we save the strategy as a IStrategyInterface to give it the needed interface
@@ -86,18 +88,22 @@ contract Setup is ExtendedTest, IEvents {
         return address(_strategy);
     }
 
+    /// Since static call is not possible due to sstore in fallback.
+    /// Helper function
     function callstrategygetaddress(string memory sig, address _address, uint256 _uint) public returns (address) {
         (bool s, bytes memory data) = address(strategy).call(abi.encodeWithSignature(sig, (_address)));
         address _asset = abi.decode(data, (address));
         return _asset;
     }
 
+    /// Helper function to call
     function callstrategygetuint(string memory sig, address _address, uint256 _uint) public returns (uint256) {
         (bool s, bytes memory data) = address(strategy).call(abi.encodeWithSignature(sig, (_address)));
         uint256 val = abi.decode(data, (uint256));
         return val;
     }
 
+    /// Helper function to call
     function callstrategy(string memory sig) public returns (address) {
         (bool s, bytes memory data) = address(strategy).call(abi.encodeWithSignature(sig));
         address val = abi.decode(data, (address));
