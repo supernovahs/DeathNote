@@ -39,6 +39,9 @@ To run tests,
 make test 
 ```
 
+## Future Vision
+I believe thia strategy can be deployed on every chain wherever aave v3 supports. After feedback from yearn devs, and more testing , I intend to deploy this strategy on Polygon POS and subsequently on rest of the chains. Have to figure out stuff like performance fee, etc . This is a fairly simple strategy, and I expect users to use this strategy in the future frequently, especially efter transient storage hard fork.
+
 ## Safety
 This is experimental software and is provided on an "as is" and "as available" basis. We do not give any warranties and will not be liable for any loss incurred through any use of this codebase. This code is strictly for educational purposes only. Not for production use.
 
