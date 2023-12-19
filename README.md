@@ -32,7 +32,7 @@ To run tests,
 ```
 make test 
 ```
-
+Note, some default test files are commented as static calls are not supported . They are yet to be modified.
 ## Future Vision
 I believe thia strategy can be deployed on every chain wherever aave v3 supports. After feedback from yearn devs, and more testing , I intend to deploy this strategy on Polygon POS and subsequently on rest of the chains. Have to figure out stuff like performance fee, etc . This is a fairly simple strategy, and I expect users to use this strategy in the future frequently, especially efter transient storage hard fork.
 
