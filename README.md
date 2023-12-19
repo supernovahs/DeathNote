@@ -24,7 +24,7 @@ This protocol is built on top of YearnV3 strategy to protect Eth hodlers , in ca
 You can find the unit tests in [here](https://github.com/supernovahs/DeathNote/blob/master/src/test/Operation.t.sol).
 To run tests, 
 ```
-forge test 
+make test 
 ```
 
 ## Made with ❤️ by 
